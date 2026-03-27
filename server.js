@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const { handleFacebookComment, handleInstagramComment } = require("./commentHandler");
+const { runFullScan } = require("./scanner");
 
 const app = express();
 app.use(express.json());
@@ -8,72 +9,61 @@ app.use(express.json());
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "amfishing_webhook_secret_2024";
 const PORT = process.env.PORT || 3000;
 
-// Webhook verification (GET) — Meta calls this when you register the webhook
+// Webhook verification (GET)
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
-
   if (mode === "subscribe" && token === VERIFY_TOKEN) {
-    console.log("[Webhook] Verified successfully");
+    console.log("[Webhook] Verified");
     res.status(200).send(challenge);
   } else {
-    console.warn("[Webhook] Verification failed — token mismatch");
     res.sendStatus(403);
   }
 });
 
-// Webhook event receiver (POST) — Meta sends comment events here
+// Webhook event receiver (POST)
 app.post("/webhook", async (req, res) => {
   const body = req.body;
-
-  // Acknowledge immediately — Meta requires a 200 within 5 seconds
-  res.sendStatus(200);
+  res.sendStatus(200); // Acknowledge immediately
 
   if (body.object === "page") {
-    // Facebook Page events
     for (const entry of body.entry || []) {
       for (const change of entry.changes || []) {
-        if (change.field === "feed") {
-          const value = change.value;
-
-          // New comment on a post
-          if (value.item === "comment" && value.verb === "add") {
-            console.log("[Webhook] New FB comment received");
-            await handleFacebookComment({
-              id: value.comment_id,
-              message: value.message,
-              from: { name: value.from?.name, id: value.from?.id },
-            }).catch((err) => console.error("[Webhook] FB handler error:", err));
-          }
+        if (change.field === "feed" && change.value?.item === "comment" && change.value?.verb === "add") {
+          await handleFacebookComment({
+            id: change.value.comment_id,
+            message: change.value.message,
+            from: { name: change.value.from?.name, id: change.value.from?.id }
+          }).catch(err => console.error("[Webhook] FB handler error:", err));
         }
       }
     }
   } else if (body.object === "instagram") {
-    // Instagram events
     for (const entry of body.entry || []) {
-      // Comments via webhook
       for (const change of entry.changes || []) {
         if (change.field === "comments") {
-          const value = change.value;
-          console.log("[Webhook] New IG comment received");
           await handleInstagramComment({
-            id: value.id,
-            text: value.text,
-            media_id: value.media?.id,
-            username: value.from?.username,
-          }).catch((err) => console.error("[Webhook] IG handler error:", err));
-        }
-
-        if (change.field === "mentions") {
-          const value = change.value;
-          console.log("[Webhook] IG mention received — media_id:", value.media_id);
-          // Mentions require a separate API call to get comment text
-          // For now just log — can expand later
+            id: change.value.id,
+            text: change.value.text,
+            media_id: change.value.media?.id,
+            username: change.value.from?.username
+          }).catch(err => console.error("[Webhook] IG handler error:", err));
         }
       }
     }
   }
+});
+
+// Manual scan endpoint — called by heartbeat
+app.post("/scan", async (req, res) => {
+  // Simple auth check
+  const auth = req.headers["x-scan-token"];
+  if (auth !== process.env.WEBHOOK_VERIFY_TOKEN) {
+    return res.sendStatus(401);
+  }
+  res.sendStatus(200); // Respond immediately, scan runs async
+  runFullScan().catch(err => console.error("[Scan] Error:", err));
 });
 
 // Health check
@@ -81,5 +71,4 @@ app.get("/", (req, res) => res.send("A.M. Fishing comment bot is running"));
 
 app.listen(PORT, () => {
   console.log(`[Server] Listening on port ${PORT}`);
-  console.log(`[Server] Webhook endpoint: /webhook`);
 });
