@@ -28,7 +28,7 @@ async function getAdPostIds() {
       params: {
         fields: "id,creative{object_story_id,effective_object_story_id}",
         limit: 100,
-        date_preset: "last_7d",
+        date_preset: "today",
         access_token: USER_TOKEN
       }
     });
@@ -47,13 +47,17 @@ async function getAdPostIds() {
 async function scanPostComments(postId) {
   const summary = { scanned: 0, skipped: 0, errors: [] };
   try {
+    const since24h = Math.floor(Date.now() / 1000) - 86400;
     const res = await axios.get(`${BASE}/${postId}/comments`, {
-      params: { fields: "id,message,from,created_time", limit: 100, filter: "stream", access_token: PAGE_TOKEN }
+      params: { fields: "id,message,from,created_time", limit: 100, filter: "stream", since: since24h, access_token: PAGE_TOKEN }
     });
     const comments = res.data.data || [];
     for (const comment of comments) {
       if (comment.from?.id === PAGE_ID) continue;
       if (processed.has(comment.id)) { summary.skipped++; continue; }
+      // Skip comments older than 24 hours
+      const commentAge = Date.now() / 1000 - new Date(comment.created_time).getTime() / 1000;
+      if (commentAge > 86400) { summary.skipped++; continue; }
       try {
         const repliesRes = await axios.get(`${BASE}/${comment.id}/comments`, {
           params: { fields: "id,from", limit: 10, access_token: PAGE_TOKEN }
