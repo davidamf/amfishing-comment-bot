@@ -11,6 +11,17 @@ const DELETE_KEYWORDS = [
   // Strong negatives
   "garbage", "trash", "junk", "crap ", "terrible", "horrible", "worst", "awful", "disgusting",
   "never again", "waste of money", "waste of time",
+  // Order delay complaints
+  "hasn't shipped", "hasnt shipped", "not shipped", "not even shipped", "never shipped",
+  "still hasn't", "still hasnt", "still waiting", "waiting weeks", "waiting months",
+  "waiting over", "days ago", "weeks ago", "months ago", "ordered weeks", "ordered months",
+  "ordered over", "paid and", "took my money", "took my $", "charged me",
+  "where is my order", "where is my package", "where's my order", "wheres my order",
+  "no shipping update", "no update", "no response", "no reply", "ghosted",
+  "never received", "never arrived", "never got", "haven't received", "havent received",
+  "didn't receive", "didnt receive", "2 months", "3 months", "30 days", "45 days",
+  "60 days", "still not here", "not here yet", "where are my",
+
   // Mild negatives and disappointment
   "disappointed", "disappointing", "not worth", "not good", "bad quality", "poor quality",
   "overpriced", "too expensive", "cheap", "broke", "breaks", "falling apart",
