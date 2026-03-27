@@ -38,11 +38,14 @@ const DELETE_KEYWORDS = [
   "fuck", "shit", "bitch", "bastard", "asshole", "wtf", "stfu",
 ];
 
-// ORDER_KEYWORDS: specific phrases only — NOT bare "order" which is too broad
+// ORDER_KEYWORDS: only match comments asking for help with an order — NOT happy customers mentioning they got theirs
+// Key insight: we want "my order" ONLY when paired with a problem or question — not standalone positive mentions
 const ORDER_KEYWORDS = [
-  "my order", "my package", "my shipment", "tracking number", "shipping address",
-  "delivery issue", "not received", "haven't received", "order number",
-  "when does it ship", "when will it ship", "did my order", "order status",
+  "my package", "my shipment", "tracking number", "order number",
+  "delivery issue", "not received", "haven't received", "havent received",
+  "when does it ship", "when will it ship", "did my order ship", "order status",
+  "issue with my order", "problem with my order", "help with my order",
+  "contact about my order", "email about my order", "question about my order",
 ];
 
 const PRODUCT_KEYWORDS = [

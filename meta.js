@@ -3,6 +3,26 @@ const axios = require("axios");
 const PAGE_TOKEN = process.env.PAGE_ACCESS_TOKEN;
 const BASE = "https://graph.facebook.com/v19.0";
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Retry wrapper with backoff for Meta rate limits (error 368)
+async function withRateLimit(fn, label) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const apiErr = err.response?.data?.error;
+      if (apiErr?.code === 368 && attempt < 3) {
+        const delay = attempt === 1 ? 30000 : 90000; // 30s then 90s
+        console.warn(`[Meta] Rate limited on ${label} (attempt ${attempt}) — waiting ${delay / 1000}s`);
+        await sleep(delay);
+      } else {
+        throw err;
+      }
+    }
+  }
+}
+
 // Delete a Facebook comment
 async function deleteComment(commentId) {
   try {
@@ -49,13 +69,15 @@ async function blockUser(userId, pageId) {
   }
 }
 
-// Reply to a Facebook comment
+// Reply to a Facebook comment (with rate limit backoff)
 async function replyToFacebookComment(commentId, message) {
   try {
-    await axios.post(`${BASE}/${commentId}/comments`, {
-      message,
-      access_token: PAGE_TOKEN,
-    });
+    await withRateLimit(async () => {
+      await axios.post(`${BASE}/${commentId}/comments`, {
+        message,
+        access_token: PAGE_TOKEN,
+      });
+    }, `FB reply ${commentId}`);
     console.log(`[Meta] Replied to FB comment ${commentId}`);
     return true;
   } catch (err) {
@@ -64,13 +86,15 @@ async function replyToFacebookComment(commentId, message) {
   }
 }
 
-// Reply to an Instagram comment
+// Reply to an Instagram comment (with rate limit backoff)
 async function replyToInstagramComment(mediaId, commentId, message) {
   try {
-    await axios.post(`${BASE}/${commentId}/replies`, {
-      message,
-      access_token: PAGE_TOKEN,
-    });
+    await withRateLimit(async () => {
+      await axios.post(`${BASE}/${commentId}/replies`, {
+        message,
+        access_token: PAGE_TOKEN,
+      });
+    }, `IG reply ${commentId}`);
     console.log(`[Meta] Replied to IG comment ${commentId}`);
     return true;
   } catch (err) {

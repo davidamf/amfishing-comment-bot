@@ -28,14 +28,24 @@ function containsKeyword(text, keywords) {
 }
 
 function sentenceCount(text) {
-  // Split on . ! ? — rough but good enough
   return (text.match(/[.!?]+/g) || []).length;
+}
+
+// Returns true if the comment is a user-to-user conversation
+// (starts with @username mention or tags someone by name at the start)
+function isUserToUserConvo(text) {
+  // Comment starts with @ or with a name tag followed by a comma/space
+  return /^@\S+/.test(text.trim()) || /^[A-Z][a-z]+ [A-Z][a-z]+[,\s]/.test(text.trim());
 }
 
 // Returns: "block" | "delete" | "order" | "whereToBuy" | "productOrGeneral" | "positive" | "skip"
 function classifyComment(text) {
   if (containsKeyword(text, BLOCK_KEYWORDS)) return "block";
   if (containsKeyword(text, DELETE_KEYWORDS)) return "delete";
+
+  // Skip user-to-user convos — we have no business jumping in
+  if (isUserToUserConvo(text)) return "skip";
+
   if (containsKeyword(text, ORDER_KEYWORDS)) return "order";
   if (containsKeyword(text, BUY_KEYWORDS)) return "whereToBuy";
   if (containsKeyword(text, PRODUCT_KEYWORDS)) return "productOrGeneral";
@@ -46,7 +56,6 @@ function classifyComment(text) {
     "works", "working", "crushed", "killed it", "slaying", "on fire"
   ];
   if (containsKeyword(text, positiveWords)) {
-    // Only reply if 3+ sentences (genuine longer testimonial)
     return sentenceCount(text) >= 3 ? "positive" : "skip";
   }
 
