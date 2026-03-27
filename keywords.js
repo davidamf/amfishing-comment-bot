@@ -1,4 +1,3 @@
-// Words that trigger DELETE + block (extremely damaging)
 const BLOCK_KEYWORDS = [
   "scam", "fraud", "fake", "stolen", "steal", "ripped off", "rip off", "ripoff",
   "con artist", "con man", "thief", "thieves", "cheat", "cheater", "swindler",
@@ -6,16 +5,15 @@ const BLOCK_KEYWORDS = [
   "report", "reported", "file a claim", "dispute", "chargeback",
 ];
 
-// Words that trigger DELETE (negative, critical, or even slightly negative/disappointed)
 const DELETE_KEYWORDS = [
   // Strong negatives
-  "garbage", "trash", "junk", "crap ", "terrible", "horrible", "worst", "awful", "disgusting",
+  "garbage", "trash", "junk", "terrible", "horrible", "worst", "awful", "disgusting",
   "never again", "waste of money", "waste of time",
-  // Order delay complaints
+  // Order delay / complaints — specific phrases only, not bare "order"
   "hasn't shipped", "hasnt shipped", "not shipped", "not even shipped", "never shipped",
   "still hasn't", "still hasnt", "still waiting", "waiting weeks", "waiting months",
   "waiting over", "days ago", "weeks ago", "months ago", "ordered weeks", "ordered months",
-  "ordered over", "paid and", "took my money", "took my $", "charged me",
+  "ordered over", "took my money", "took my $", "charged me",
   "where is my order", "where is my package", "where's my order", "wheres my order",
   "when will my order", "when will my package", "when does my order", "when is my order",
   "any update on my order", "any update on my package", "update on my order",
@@ -25,30 +23,26 @@ const DELETE_KEYWORDS = [
   "never received", "never arrived", "never got", "haven't received", "havent received",
   "didn't receive", "didnt receive", "2 months", "3 months", "30 days", "45 days",
   "60 days", "still not here", "not here yet", "where are my",
-
-  // Mild negatives and disappointment
+  "haven't received mine", "check on my order", "please check on my",
+  // Mild negatives
   "disappointed", "disappointing", "not worth", "not good", "bad quality", "poor quality",
-  "overpriced", "too expensive", "cheap", "broke", "breaks", "falling apart",
-  "slow shipping", "late", "haven't received", "never got", "still waiting",
-  "wrong", "missing", "damaged", "broken", "defective",
+  "overpriced", "too expensive", "broke", "breaks", "falling apart",
+  "slow shipping", "late", "wrong item", "missing item", "damaged", "broken", "defective",
   "not happy", "unhappy", "frustrated", "annoyed", "upset",
   "expected better", "not what i expected", "not as advertised",
   "don't recommend", "dont recommend", "would not recommend", "wouldn't recommend",
-  "waste", "regret", "regrets", "mistake",
-  "not impressed", "unimpressed", "fell short", "let down", "letdown",
-  "meh", "mediocre", "average", "nothing special", "not great",
-  "kinda bad", "pretty bad", "not the best", "could be better",
+  "waste", "regret", "mistake", "not impressed", "unimpressed", "fell short", "let down",
   "didn't work", "doesn't work", "not working", "stopped working",
   "fell off", "came apart", "poor", "subpar",
-  // Competitor mentions
-  "googan", "6th sense", "kwigglers", "k wigglers", "xcite", "drave",
   // Profanity
-  "fuck", "shit", "bitch", "bastard", "asshole", "wtf", "stfu", "dumb", "idiot", "stupid",
+  "fuck", "shit", "bitch", "bastard", "asshole", "wtf", "stfu",
 ];
 
+// ORDER_KEYWORDS: specific phrases only — NOT bare "order" which is too broad
 const ORDER_KEYWORDS = [
-  "order", "shipping", "delivery", "package", "tracking", "refund", "return",
-  "exchange", "not received",
+  "my order", "my package", "my shipment", "tracking number", "shipping address",
+  "delivery issue", "not received", "haven't received", "order number",
+  "when does it ship", "when will it ship", "did my order", "order status",
 ];
 
 const PRODUCT_KEYWORDS = [
