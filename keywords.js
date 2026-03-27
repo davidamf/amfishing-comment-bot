@@ -9,7 +9,7 @@ const BLOCK_KEYWORDS = [
 // Words that trigger DELETE (negative, critical, or even slightly negative/disappointed)
 const DELETE_KEYWORDS = [
   // Strong negatives
-  "garbage", "trash", "junk", "crap", "terrible", "horrible", "worst", "awful", "disgusting",
+  "garbage", "trash", "junk", "crap ", "terrible", "horrible", "worst", "awful", "disgusting",
   "never again", "waste of money", "waste of time",
   // Mild negatives and disappointment
   "disappointed", "disappointing", "not worth", "not good", "bad quality", "poor quality",

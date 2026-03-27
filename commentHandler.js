@@ -17,7 +17,14 @@ const {
 
 function containsKeyword(text, keywords) {
   const lower = text.toLowerCase();
-  return keywords.some((kw) => lower.includes(kw.toLowerCase()));
+  return keywords.some((kw) => {
+    const kwLower = kw.toLowerCase();
+    const idx = lower.indexOf(kwLower);
+    if (idx === -1) return false;
+    const before = idx === 0 || /\W/.test(lower[idx - 1]);
+    const after = idx + kwLower.length >= lower.length || /\W/.test(lower[idx + kwLower.length]);
+    return before && after;
+  });
 }
 
 function sentenceCount(text) {
