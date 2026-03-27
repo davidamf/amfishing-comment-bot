@@ -5,7 +5,7 @@ const {
   replyToFacebookComment,
   replyToInstagramComment,
 } = require("./meta");
-const { notifyMike } = require("./telegram");
+const { notifyMike, notifyComments } = require("./telegram");
 const { generateProductReply, generatePositiveReply } = require("./aiReply");
 const {
   BLOCK_KEYWORDS,
@@ -70,13 +70,13 @@ async function handleFacebookComment(comment) {
   if (intent === "block") {
     await deleteComment(id);
     if (authorId) await blockUser(authorId);
-    await notifyMike(`<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${message}"\n\nReason: Extremely damaging keyword.`);
+    await notifyComments(`<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${message}"\n\nReason: Extremely damaging keyword.`);
     return;
   }
 
   if (intent === "delete") {
     await deleteComment(id);
-    await notifyMike(`<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${message}"\n\nReason: Negative/disappointed keyword.`);
+    await notifyComments(`<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${message}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
@@ -117,13 +117,13 @@ async function handleInstagramComment(commentData) {
 
   if (intent === "block") {
     await deleteInstagramComment(id);
-    await notifyMike(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\n⚠️ Please block this user manually on Instagram.`);
+    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\n⚠️ Please block this user manually on Instagram.`);
     return;
   }
 
   if (intent === "delete") {
     await deleteInstagramComment(id);
-    await notifyMike(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\nReason: Negative/disappointed keyword.`);
+    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
