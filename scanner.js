@@ -12,7 +12,7 @@ async function scanFacebookComments() {
   const summary = { posts: 0, scanned: 0, errors: [] };
   try {
     // Get recent posts (last 48h)
-    const since = Math.floor(Date.now() / 1000) - 172800;
+    const since = Math.floor(Date.now() / 1000) - 604800; // 7 days
     const postsRes = await axios.get(`${BASE}/${PAGE_ID}/posts`, {
       params: { fields: "id,created_time,message", limit: 25, since, access_token: PAGE_TOKEN }
     });
