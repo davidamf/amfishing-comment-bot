@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const { handleFacebookComment, handleInstagramComment } = require("./commentHandler");
-const { runFullScan } = require("./scanner");
 
 const app = express();
 app.use(express.json());
@@ -55,16 +54,6 @@ app.post("/webhook", async (req, res) => {
   }
 });
 
-// Manual scan endpoint — called by heartbeat
-app.post("/scan", async (req, res) => {
-  // Simple auth check
-  const auth = req.headers["x-scan-token"];
-  if (auth !== process.env.WEBHOOK_VERIFY_TOKEN) {
-    return res.sendStatus(401);
-  }
-  res.sendStatus(200); // Respond immediately, scan runs async
-  runFullScan().catch(err => console.error("[Scan] Error:", err));
-});
 
 // Health check
 app.get("/", (req, res) => res.send("A.M. Fishing comment bot is running"));
