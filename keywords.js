@@ -1,42 +1,33 @@
-// Negative keywords — comments containing these get hidden and escalated to Mike
-const NEGATIVE_KEYWORDS = [
-  // Complaints / scam accusations
-  "scam", "fraud", "fake", "rip off", "ripoff", "ripped off", "stolen", "steal",
+// Words that trigger DELETE + block (extremely damaging to the business)
+const BLOCK_KEYWORDS = [
+  "scam", "fraud", "fake", "stolen", "steal", "ripped off", "rip off", "ripoff",
+  "con artist", "con man", "thief", "thieves", "cheat", "cheater", "swindler",
+  "do not buy", "dont buy", "don't buy", "stay away", "avoid this",
+];
+
+// Words that trigger DELETE only (no block)
+const DELETE_KEYWORDS = [
   "garbage", "trash", "junk", "crap", "terrible", "horrible", "worst",
-  "never again", "waste of money", "waste of time", "don't buy", "dont buy",
-  "do not buy", "stay away", "avoid", "awful", "disgusting",
-  // Shipping/order complaints
-  "never arrived", "didn't arrive", "still waiting", "where is my order",
+  "never again", "waste of money", "waste of time", "awful", "disgusting",
+  "fucking", "fuck", "shit", "bitch", "bastard", "asshole", "wtf",
   "lost my package", "wrong order", "wrong item", "broken", "damaged",
-  // Competitor attacks
+  "never arrived", "didn't arrive", "still waiting",
   "googan", "6th sense", "kwigglers", "k wigglers", "xcite", "drave",
-  // Profanity (basic)
-  "fuck", "shit", "damn", "ass", "bitch", "bastard", "wtf",
 ];
 
 // Auto-reply templates keyed by comment intent
-// These are fallback replies — most comments get a short friendly reply
 const AUTO_REPLIES = {
-  // Someone asks where to buy
   whereToBuy: "You can grab them at amfishingtx.com — we ship fast and have the full lineup available online!",
-
-  // Product question (generic)
   productQuestion: "Great question! Head over to amfishingtx.com or check our FAQ at amfishingtx.com/pages/frequently-asked-questions — lots of detail there on sizes, rigging, and techniques. If you still have questions shoot us an email at david@amfishingtx.com.",
-
-  // Order issue — redirect to support
   orderIssue: "Sorry to hear that! Shoot us an email at david@amfishingtx.com with your order number and we will get it sorted out right away.",
-
-  // Positive comment / compliment — short and genuine
   positive: "Thanks so much — really appreciate the support! Tight lines!",
-
-  // Generic / unknown
   generic: "Thanks for the comment! If you have any questions about our lures or need help with an order feel free to email us at david@amfishingtx.com.",
 };
 
-// Keywords that signal an order issue (redirect to email)
+// Keywords that signal an order issue
 const ORDER_KEYWORDS = [
   "order", "shipping", "delivery", "package", "tracking", "refund", "return",
-  "exchange", "wrong", "missing", "damaged", "broken", "not received",
+  "exchange", "wrong", "missing", "not received",
 ];
 
 // Keywords that signal a product/fishing question
@@ -54,7 +45,8 @@ const BUY_KEYWORDS = [
 ];
 
 module.exports = {
-  NEGATIVE_KEYWORDS,
+  BLOCK_KEYWORDS,
+  DELETE_KEYWORDS,
   AUTO_REPLIES,
   ORDER_KEYWORDS,
   PRODUCT_KEYWORDS,

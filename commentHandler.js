@@ -1,7 +1,14 @@
-const { hideComment, replyToFacebookComment, replyToInstagramComment } = require("./meta");
+const {
+  deleteComment,
+  deleteInstagramComment,
+  blockUser,
+  replyToFacebookComment,
+  replyToInstagramComment,
+} = require("./meta");
 const { notifyMike } = require("./telegram");
 const {
-  NEGATIVE_KEYWORDS,
+  BLOCK_KEYWORDS,
+  DELETE_KEYWORDS,
   AUTO_REPLIES,
   ORDER_KEYWORDS,
   PRODUCT_KEYWORDS,
@@ -13,13 +20,14 @@ function containsKeyword(text, keywords) {
   return keywords.some((kw) => lower.includes(kw.toLowerCase()));
 }
 
+// Returns: "block" | "delete" | "order" | "whereToBuy" | "productQuestion" | "positive" | "generic"
 function classifyComment(text) {
-  if (containsKeyword(text, NEGATIVE_KEYWORDS)) return "negative";
+  if (containsKeyword(text, BLOCK_KEYWORDS)) return "block";
+  if (containsKeyword(text, DELETE_KEYWORDS)) return "delete";
   if (containsKeyword(text, ORDER_KEYWORDS)) return "order";
   if (containsKeyword(text, BUY_KEYWORDS)) return "whereToBuy";
   if (containsKeyword(text, PRODUCT_KEYWORDS)) return "productQuestion";
-  // Check for positive signals
-  const positiveWords = ["love", "great", "amazing", "awesome", "best", "excellent", "perfect", "thank", "thanks", "fire"];
+  const positiveWords = ["love", "great", "amazing", "awesome", "best", "excellent", "perfect", "thank", "thanks", "fire", "sick", "goat"];
   if (containsKeyword(text, positiveWords)) return "positive";
   return "generic";
 }
@@ -27,24 +35,28 @@ function classifyComment(text) {
 async function handleFacebookComment(comment) {
   const { id, message, from } = comment;
   const authorName = from?.name || "Unknown";
+  const authorId = from?.id;
 
-  if (!message) {
-    console.log(`[Handler] FB comment ${id} has no text — skipping`);
-    return;
-  }
+  if (!message) return;
 
   console.log(`[Handler] FB comment from ${authorName}: "${message}"`);
-
   const intent = classifyComment(message);
   console.log(`[Handler] Classified as: ${intent}`);
 
-  if (intent === "negative") {
-    // Hide the comment and alert Mike
-    await hideComment(id, "facebook");
+  if (intent === "block") {
+    await deleteComment(id);
+    if (authorId) await blockUser(authorId);
     await notifyMike(
-      `<b>Negative comment hidden on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${message}"\nComment ID: ${id}\n\nPlease review and decide if further action is needed.`
+      `<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${message}"\n\nReason: Extremely damaging keyword detected.`
     );
-    console.log(`[Handler] Negative comment hidden and Mike alerted`);
+    return;
+  }
+
+  if (intent === "delete") {
+    await deleteComment(id);
+    await notifyMike(
+      `<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${message}"\n\nReason: Negative keyword detected.`
+    );
     return;
   }
 
@@ -68,30 +80,33 @@ async function handleFacebookComment(comment) {
     return;
   }
 
-  // Generic — reply with default
   await replyToFacebookComment(id, AUTO_REPLIES.generic);
 }
 
 async function handleInstagramComment(commentData) {
-  const { id, text, media_id, username } = commentData;
+  const { id, text, media_id, username, userId } = commentData;
   const authorName = username || "Unknown";
 
-  if (!text) {
-    console.log(`[Handler] IG comment ${id} has no text — skipping`);
-    return;
-  }
+  if (!text) return;
 
   console.log(`[Handler] IG comment from @${authorName}: "${text}"`);
-
   const intent = classifyComment(text);
   console.log(`[Handler] Classified as: ${intent}`);
 
-  if (intent === "negative") {
-    await hideComment(id, "instagram");
+  if (intent === "block") {
+    await deleteInstagramComment(id);
+    // Instagram doesn't have a block endpoint via Graph API — alert Mike to block manually
     await notifyMike(
-      `<b>Negative comment hidden on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\nComment ID: ${id}\n\nPlease review and decide if further action is needed.`
+      `<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\n⚠️ Please block this user manually on Instagram — the API does not support automated blocking.`
     );
-    console.log(`[Handler] Negative IG comment hidden and Mike alerted`);
+    return;
+  }
+
+  if (intent === "delete") {
+    await deleteInstagramComment(id);
+    await notifyMike(
+      `<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\nReason: Negative keyword detected.`
+    );
     return;
   }
 
