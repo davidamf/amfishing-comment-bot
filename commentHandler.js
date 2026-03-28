@@ -7,6 +7,7 @@ const {
 } = require("./meta");
 const { notifyMike, notifyComments } = require("./telegram");
 const { generateProductReply, generatePositiveReply } = require("./aiReply");
+const { sanitizeText, sanitizeName } = require("./sanitize");
 const {
   BLOCK_KEYWORDS,
   DELETE_KEYWORDS,
@@ -31,21 +32,14 @@ function sentenceCount(text) {
   return (text.match(/[.!?]+/g) || []).length;
 }
 
-// Returns true if the comment is a user-to-user conversation
-// (starts with @username mention or tags someone by name at the start)
 function isUserToUserConvo(text) {
-  // Comment starts with @ or with a name tag followed by a comma/space
   return /^@\S+/.test(text.trim()) || /^[A-Z][a-z]+ [A-Z][a-z]+[,\s]/.test(text.trim());
 }
 
-// Returns: "block" | "delete" | "order" | "whereToBuy" | "productOrGeneral" | "positive" | "skip"
 function classifyComment(text) {
   if (containsKeyword(text, BLOCK_KEYWORDS)) return "block";
   if (containsKeyword(text, DELETE_KEYWORDS)) return "delete";
-
-  // Skip user-to-user convos — we have no business jumping in
   if (isUserToUserConvo(text)) return "skip";
-
   if (containsKeyword(text, ORDER_KEYWORDS)) return "order";
   if (containsKeyword(text, BUY_KEYWORDS)) return "whereToBuy";
   if (containsKeyword(text, PRODUCT_KEYWORDS)) return "productOrGeneral";
@@ -53,39 +47,40 @@ function classifyComment(text) {
   const positiveWords = [
     "love", "great", "amazing", "awesome", "best", "excellent", "perfect",
     "thank", "thanks", "fire", "sick", "goat", "caught", "limit", "slam",
-    "works", "working", "crushed", "killed it", "slaying", "on fire"
+    "works", "working", "crushed", "killed it", "slaying", "on fire",
   ];
   if (containsKeyword(text, positiveWords)) {
     return sentenceCount(text) >= 3 ? "positive" : "skip";
   }
 
-  // Any other comment with a question mark = treat as general question
   if (text.includes("?")) return "productOrGeneral";
-
   return "skip";
 }
 
 async function handleFacebookComment(comment) {
   const { id, message, from } = comment;
-  const authorName = from?.name || "Unknown";
+
+  // Sanitize all inputs before any processing
+  const safeMessage = sanitizeText(message);
+  const authorName = sanitizeName(from?.name);
   const authorId = from?.id;
 
-  if (!message) return;
+  if (!safeMessage) return;
 
-  console.log(`[Handler] FB comment from ${authorName}: "${message}"`);
-  const intent = classifyComment(message);
+  console.log(`[Handler] FB comment from ${authorName}: "${safeMessage}"`);
+  const intent = classifyComment(safeMessage);
   console.log(`[Handler] Intent: ${intent}`);
 
   if (intent === "block") {
     await deleteComment(id);
     if (authorId) await blockUser(authorId);
-    await notifyComments(`<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${message}"\n\nReason: Extremely damaging keyword.`);
+    await notifyComments(`<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${safeMessage}"\n\nReason: Extremely damaging keyword.`);
     return;
   }
 
   if (intent === "delete") {
     await deleteComment(id);
-    await notifyComments(`<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${message}"\n\nReason: Negative/disappointed keyword.`);
+    await notifyComments(`<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${safeMessage}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
@@ -100,39 +95,40 @@ async function handleFacebookComment(comment) {
   }
 
   if (intent === "productOrGeneral") {
-    const reply = await generateProductReply(message);
+    const reply = await generateProductReply(safeMessage);
     await replyToFacebookComment(id, reply);
     return;
   }
 
   if (intent === "positive") {
-    const reply = await generatePositiveReply(message);
+    const reply = await generatePositiveReply(safeMessage);
     await replyToFacebookComment(id, reply);
     return;
   }
-
-  // "skip" — no action
 }
 
 async function handleInstagramComment(commentData) {
   const { id, text, media_id, username } = commentData;
-  const authorName = username || "Unknown";
 
-  if (!text) return;
+  // Sanitize all inputs before any processing
+  const safeText = sanitizeText(text);
+  const authorName = sanitizeName(username);
 
-  console.log(`[Handler] IG comment from @${authorName}: "${text}"`);
-  const intent = classifyComment(text);
+  if (!safeText) return;
+
+  console.log(`[Handler] IG comment from @${authorName}: "${safeText}"`);
+  const intent = classifyComment(safeText);
   console.log(`[Handler] Intent: ${intent}`);
 
   if (intent === "block") {
     await deleteInstagramComment(id);
-    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\n⚠️ Please block this user manually on Instagram.`);
+    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${safeText}"\n\n⚠️ Please block this user manually on Instagram.`);
     return;
   }
 
   if (intent === "delete") {
     await deleteInstagramComment(id);
-    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${text}"\n\nReason: Negative/disappointed keyword.`);
+    await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${safeText}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
@@ -147,13 +143,13 @@ async function handleInstagramComment(commentData) {
   }
 
   if (intent === "productOrGeneral") {
-    const reply = await generateProductReply(text);
+    const reply = await generateProductReply(safeText);
     await replyToInstagramComment(media_id, id, reply);
     return;
   }
 
   if (intent === "positive") {
-    const reply = await generatePositiveReply(text);
+    const reply = await generatePositiveReply(safeText);
     await replyToInstagramComment(media_id, id, reply);
     return;
   }

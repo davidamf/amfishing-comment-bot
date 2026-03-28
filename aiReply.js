@@ -1,9 +1,9 @@
 const axios = require("axios");
+const { sanitizeText } = require("./sanitize");
 
 const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-const MODEL = "claude-haiku-4-5"; // fast + cheap for comment replies
+const MODEL = "claude-haiku-4-5";
 
-// Writing style extracted from A.M. Fishing blog
 const STYLE_GUIDE = `
 You write in the voice of A.M. Fishing — a small Texas-based fishing lure brand run by a hands-on fisherman.
 
@@ -20,24 +20,23 @@ Writing rules (STRICT):
 - Never make up specs or facts — only use what you know from the website
 `;
 
-// Scraped FAQ + blog knowledge (static snapshot — good enough for replies)
 const PRODUCT_KNOWLEDGE = `
 A.M. Fishing lures are soft plastic lures made in Texas.
 Sizes: 3 inch, 4 inch, 5.5 inch, 7 inch.
-All lures are infused with potent garlic scent that lasts the life of the lure — it covers up human scents like sunscreen and bug spray and makes fish hold on longer after striking.
-UV/glow colors: the fluorescent colorants reflect UV light which fish can see underwater even in murky or deep water. This makes the lures visible when other colors aren't.
-Colors work differently underwater — UV light penetrates deeper than visible light so UV/glow colors give you an edge especially in stained water or deeper depths.
+All lures are infused with potent garlic scent that lasts the life of the lure.
+UV/glow colors reflect UV light which fish can see underwater even in murky or deep water.
 For bass in freshwater: Texas rig or Carolina rig work great. Jighead works well for finesse situations.
-For saltwater inshore species (redfish, flounder, trout): jighead is the most common setup. 3/8 oz for shallow, heavier for current or depth.
-Rigging options: Texas rig (weedless), Carolina rig (bottom), jighead (direct), wacky rig (for finesse bass).
-Recommended hook size depends on lure size — use a 3/0 for the 4 inch, 4/0 or 5/0 for the 5.5 inch.
+For saltwater inshore species (redfish, flounder, trout): jighead is the most common setup.
+Rigging options: Texas rig (weedless), Carolina rig (bottom), jighead (direct), wacky rig (finesse bass).
 Free shipping on US orders over $69.
 Contact: david@amfishingtx.com
 Website: amfishingtx.com
-FAQ: amfishingtx.com/pages/frequently-asked-questions
 `;
 
-async function generateProductReply(comment) {
+async function generateProductReply(rawComment) {
+  // Sanitize before passing to AI — prevent prompt injection
+  const comment = sanitizeText(rawComment, 500);
+
   if (!ANTHROPIC_KEY) {
     return "Great question! You can find all the details on our lures at amfishingtx.com or email us at david@amfishingtx.com and we will get you sorted out.";
   }
@@ -51,26 +50,28 @@ async function generateProductReply(comment) {
         messages: [
           {
             role: "user",
-            content: `${STYLE_GUIDE}\n\nProduct/brand knowledge:\n${PRODUCT_KNOWLEDGE}\n\nSomeone left this comment on one of our Facebook/Instagram posts:\n"${comment}"\n\nWrite a short genuine reply using ONLY the product knowledge above. If the question can't be answered from the knowledge provided just point them to the website or email. Do not make anything up.`
-          }
-        ]
+            content: `${STYLE_GUIDE}\n\nProduct/brand knowledge:\n${PRODUCT_KNOWLEDGE}\n\nSomeone left this comment on one of our Facebook/Instagram posts:\n"${comment}"\n\nWrite a short genuine reply using ONLY the product knowledge above. If the question can't be answered from the knowledge provided just point them to the website or email. Do not make anything up.`,
+          },
+        ],
       },
       {
         headers: {
           "x-api-key": ANTHROPIC_KEY,
           "anthropic-version": "2023-06-01",
-          "content-type": "application/json"
-        }
+          "content-type": "application/json",
+        },
       }
     );
-    return response.data.content[0].text.trim();
+    return sanitizeText(response.data.content[0].text.trim(), 500);
   } catch (err) {
     console.error("[AI] Reply generation failed:", err.response?.data || err.message);
     return "Great question! Head over to amfishingtx.com or shoot us an email at david@amfishingtx.com and we will get you the details.";
   }
 }
 
-async function generatePositiveReply(comment) {
+async function generatePositiveReply(rawComment) {
+  const comment = sanitizeText(rawComment, 500);
+
   if (!ANTHROPIC_KEY) {
     return "Thanks so much — really appreciate you sharing that. Tight lines!";
   }
@@ -84,19 +85,19 @@ async function generatePositiveReply(comment) {
         messages: [
           {
             role: "user",
-            content: `${STYLE_GUIDE}\n\nSomeone left this positive comment on one of our Facebook/Instagram posts:\n"${comment}"\n\nWrite a warm but short genuine reply. Acknowledge what they said specifically if possible. Sound like a real person not a brand. Max 2 sentences. No greeting.`
-          }
-        ]
+            content: `${STYLE_GUIDE}\n\nSomeone left this positive comment on one of our Facebook/Instagram posts:\n"${comment}"\n\nWrite a warm but short genuine reply. Acknowledge what they said specifically if possible. Sound like a real person not a brand. Max 2 sentences. No greeting.`,
+          },
+        ],
       },
       {
         headers: {
           "x-api-key": ANTHROPIC_KEY,
           "anthropic-version": "2023-06-01",
-          "content-type": "application/json"
-        }
+          "content-type": "application/json",
+        },
       }
     );
-    return response.data.content[0].text.trim();
+    return sanitizeText(response.data.content[0].text.trim(), 500);
   } catch (err) {
     console.error("[AI] Positive reply failed:", err.response?.data || err.message);
     return "That means a lot — really appreciate you sharing that. Tight lines!";
