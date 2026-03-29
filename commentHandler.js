@@ -16,6 +16,8 @@ const {
   BUY_KEYWORDS,
 } = require("./keywords");
 
+// REPLIES PAUSED — delete/block still active
+
 function containsKeyword(text, keywords) {
   const lower = text.toLowerCase();
   return keywords.some((kw) => {
@@ -60,7 +62,6 @@ function classifyComment(text) {
 async function handleFacebookComment(comment) {
   const { id, message, from } = comment;
 
-  // Sanitize all inputs before any processing
   const safeMessage = sanitizeText(message);
   const authorName = sanitizeName(from?.name);
   const authorId = from?.id;
@@ -84,33 +85,16 @@ async function handleFacebookComment(comment) {
     return;
   }
 
-  if (intent === "order") {
-    await replyToFacebookComment(id, "Shoot us an email at david@amfishingtx.com with your order number and we will get it taken care of right away.");
-    return;
-  }
-
-  if (intent === "whereToBuy") {
-    await replyToFacebookComment(id, "You can grab them at amfishingtx.com — we ship fast and have the full lineup available!");
-    return;
-  }
-
-  if (intent === "productOrGeneral") {
-    const reply = await generateProductReply(safeMessage);
-    await replyToFacebookComment(id, reply);
-    return;
-  }
-
-  if (intent === "positive") {
-    const reply = await generatePositiveReply(safeMessage);
-    await replyToFacebookComment(id, reply);
-    return;
-  }
+  // REPLIES PAUSED — order, whereToBuy, productOrGeneral, positive all skipped
+  // if (intent === "order") { ... }
+  // if (intent === "whereToBuy") { ... }
+  // if (intent === "productOrGeneral") { ... }
+  // if (intent === "positive") { ... }
 }
 
 async function handleInstagramComment(commentData) {
   const { id, text, media_id, username } = commentData;
 
-  // Sanitize all inputs before any processing
   const safeText = sanitizeText(text);
   const authorName = sanitizeName(username);
 
@@ -132,27 +116,11 @@ async function handleInstagramComment(commentData) {
     return;
   }
 
-  if (intent === "order") {
-    await replyToInstagramComment(media_id, id, "Shoot us an email at david@amfishingtx.com with your order number and we will get it taken care of right away.");
-    return;
-  }
-
-  if (intent === "whereToBuy") {
-    await replyToInstagramComment(media_id, id, "You can grab them at amfishingtx.com — we ship fast and have the full lineup available!");
-    return;
-  }
-
-  if (intent === "productOrGeneral") {
-    const reply = await generateProductReply(safeText);
-    await replyToInstagramComment(media_id, id, reply);
-    return;
-  }
-
-  if (intent === "positive") {
-    const reply = await generatePositiveReply(safeText);
-    await replyToInstagramComment(media_id, id, reply);
-    return;
-  }
+  // REPLIES PAUSED — order, whereToBuy, productOrGeneral, positive all skipped
+  // if (intent === "order") { ... }
+  // if (intent === "whereToBuy") { ... }
+  // if (intent === "productOrGeneral") { ... }
+  // if (intent === "positive") { ... }
 }
 
 module.exports = { handleFacebookComment, handleInstagramComment };
