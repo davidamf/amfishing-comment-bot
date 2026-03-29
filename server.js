@@ -4,12 +4,13 @@ const rateLimit = require("express-rate-limit");
 const { handleFacebookComment, handleInstagramComment } = require("./commentHandler");
 
 const app = express();
-app.use(express.json({ limit: "10kb" })); // #3 sanitize: reject oversized payloads
+app.use(express.json({ limit: "10kb" }));
 
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || "amfishing_webhook_secret_2024";
+const PAGE_ID = process.env.PAGE_ID;
+const INSTAGRAM_ACCOUNT_ID = process.env.INSTAGRAM_ACCOUNT_ID;
 const PORT = process.env.PORT || 3000;
 
-// #2 Rate limiting: max 60 requests per minute per IP
 const limiter = rateLimit({
   windowMs: 60 * 1000,
   max: 60,
@@ -25,7 +26,6 @@ app.get("/webhook", (req, res) => {
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  // #3 Sanitize: validate token is a plain string, no injection
   if (
     mode === "subscribe" &&
     typeof token === "string" &&
@@ -43,7 +43,6 @@ app.post("/webhook", async (req, res) => {
   const body = req.body;
   res.sendStatus(200); // Acknowledge immediately
 
-  // #3 Sanitize: basic structure check before processing
   if (!body || typeof body !== "object") return;
 
   if (body.object === "page") {
@@ -54,7 +53,12 @@ app.post("/webhook", async (req, res) => {
           change.value?.item === "comment" &&
           change.value?.verb === "add"
         ) {
-          // #3 Sanitize: truncate comment text to 2000 chars max
+          // Skip comments posted by our own Page (prevents reply loops)
+          if (change.value.from?.id === PAGE_ID) {
+            console.log("[Webhook] Skipping — comment from our own Page");
+            continue;
+          }
+
           const message = typeof change.value.message === "string"
             ? change.value.message.slice(0, 2000)
             : "";
@@ -74,7 +78,12 @@ app.post("/webhook", async (req, res) => {
     for (const entry of body.entry || []) {
       for (const change of entry.changes || []) {
         if (change.field === "comments") {
-          // #3 Sanitize: truncate comment text
+          // Skip comments posted by our own Instagram account (prevents reply loops)
+          if (change.value.from?.id === INSTAGRAM_ACCOUNT_ID) {
+            console.log("[Webhook] Skipping — comment from our own IG account");
+            continue;
+          }
+
           const text = typeof change.value.text === "string"
             ? change.value.text.slice(0, 2000)
             : "";
@@ -93,6 +102,20 @@ app.post("/webhook", async (req, res) => {
 
 // Health check
 app.get("/", (req, res) => res.send("A.M. Fishing comment bot is running"));
+
+// Manual scan trigger
+const { runFullScan } = require("./scanner");
+app.post("/scan", async (req, res) => {
+  const token = req.headers["x-scan-token"];
+  if (token !== VERIFY_TOKEN) return res.sendStatus(403);
+  res.sendStatus(200);
+  try {
+    const result = await runFullScan();
+    console.log("[Scan] Complete:", JSON.stringify(result));
+  } catch (err) {
+    console.error("[Scan] Error:", err.message);
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`[Server] Listening on port ${PORT}`);
