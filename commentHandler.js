@@ -6,17 +6,15 @@ const {
   replyToInstagramComment,
 } = require("./meta");
 const { notifyMike, notifyComments } = require("./telegram");
-const { generateProductReply, generatePositiveReply } = require("./aiReply");
+const { generateProductReply } = require("./aiReply");
 const { sanitizeText, sanitizeName } = require("./sanitize");
 const {
   BLOCK_KEYWORDS,
   DELETE_KEYWORDS,
-  ORDER_KEYWORDS,
-  PRODUCT_KEYWORDS,
-  BUY_KEYWORDS,
 } = require("./keywords");
 
-// REPLIES PAUSED — delete/block still active
+// REPLY RULE: only reply to comments that contain a question mark
+// Delete/block always active regardless
 
 function containsKeyword(text, keywords) {
   const lower = text.toLowerCase();
@@ -30,33 +28,12 @@ function containsKeyword(text, keywords) {
   });
 }
 
-function sentenceCount(text) {
-  return (text.match(/[.!?]+/g) || []).length;
-}
-
 function isUserToUserConvo(text) {
   return /^@\S+/.test(text.trim()) || /^[A-Z][a-z]+ [A-Z][a-z]+[,\s]/.test(text.trim());
 }
 
-function classifyComment(text) {
-  if (containsKeyword(text, BLOCK_KEYWORDS)) return "block";
-  if (containsKeyword(text, DELETE_KEYWORDS)) return "delete";
-  if (isUserToUserConvo(text)) return "skip";
-  if (containsKeyword(text, ORDER_KEYWORDS)) return "order";
-  if (containsKeyword(text, BUY_KEYWORDS)) return "whereToBuy";
-  if (containsKeyword(text, PRODUCT_KEYWORDS)) return "productOrGeneral";
-
-  const positiveWords = [
-    "love", "great", "amazing", "awesome", "best", "excellent", "perfect",
-    "thank", "thanks", "fire", "sick", "goat", "caught", "limit", "slam",
-    "works", "working", "crushed", "killed it", "slaying", "on fire",
-  ];
-  if (containsKeyword(text, positiveWords)) {
-    return sentenceCount(text) >= 3 ? "positive" : "skip";
-  }
-
-  if (text.includes("?")) return "productOrGeneral";
-  return "skip";
+function isQuestion(text) {
+  return text.includes("?");
 }
 
 async function handleFacebookComment(comment) {
@@ -69,27 +46,26 @@ async function handleFacebookComment(comment) {
   if (!safeMessage) return;
 
   console.log(`[Handler] FB comment from ${authorName}: "${safeMessage}"`);
-  const intent = classifyComment(safeMessage);
-  console.log(`[Handler] Intent: ${intent}`);
 
-  if (intent === "block") {
+  if (containsKeyword(safeMessage, BLOCK_KEYWORDS)) {
     await deleteComment(id);
     if (authorId) await blockUser(authorId);
     await notifyComments(`<b>Comment DELETED + user BLOCKED on Facebook</b>\n\nAuthor: ${authorName} (ID: ${authorId})\nComment: "${safeMessage}"\n\nReason: Extremely damaging keyword.`);
     return;
   }
 
-  if (intent === "delete") {
+  if (containsKeyword(safeMessage, DELETE_KEYWORDS)) {
     await deleteComment(id);
     await notifyComments(`<b>Comment DELETED on Facebook</b>\n\nAuthor: ${authorName}\nComment: "${safeMessage}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
-  // REPLIES PAUSED — order, whereToBuy, productOrGeneral, positive all skipped
-  // if (intent === "order") { ... }
-  // if (intent === "whereToBuy") { ... }
-  // if (intent === "productOrGeneral") { ... }
-  // if (intent === "positive") { ... }
+  // Only reply if comment contains a question
+  if (isQuestion(safeMessage) && !isUserToUserConvo(safeMessage)) {
+    const reply = await generateProductReply(safeMessage);
+    await replyToFacebookComment(id, reply);
+    return;
+  }
 }
 
 async function handleInstagramComment(commentData) {
@@ -101,26 +77,25 @@ async function handleInstagramComment(commentData) {
   if (!safeText) return;
 
   console.log(`[Handler] IG comment from @${authorName}: "${safeText}"`);
-  const intent = classifyComment(safeText);
-  console.log(`[Handler] Intent: ${intent}`);
 
-  if (intent === "block") {
+  if (containsKeyword(safeText, BLOCK_KEYWORDS)) {
     await deleteInstagramComment(id);
     await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${safeText}"\n\n⚠️ Please block this user manually on Instagram.`);
     return;
   }
 
-  if (intent === "delete") {
+  if (containsKeyword(safeText, DELETE_KEYWORDS)) {
     await deleteInstagramComment(id);
     await notifyComments(`<b>Comment DELETED on Instagram</b>\n\nAuthor: @${authorName}\nComment: "${safeText}"\n\nReason: Negative/disappointed keyword.`);
     return;
   }
 
-  // REPLIES PAUSED — order, whereToBuy, productOrGeneral, positive all skipped
-  // if (intent === "order") { ... }
-  // if (intent === "whereToBuy") { ... }
-  // if (intent === "productOrGeneral") { ... }
-  // if (intent === "positive") { ... }
+  // Only reply if comment contains a question
+  if (isQuestion(safeText) && !isUserToUserConvo(safeText)) {
+    const reply = await generateProductReply(safeText);
+    await replyToInstagramComment(media_id, id, reply);
+    return;
+  }
 }
 
 module.exports = { handleFacebookComment, handleInstagramComment };
